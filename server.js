@@ -1,84 +1,94 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
+const io = new Server(server);
+
+app.use(express.json());
+app.use(express.static('public'));
+
+// MongoDB Atlas Connection (Password already added)
+const MONGO_URI = "mongodb+srv://vikasnetad_db_user:sc4beq2BognWPmzE@cluster0.nnjescm.mongodb.net/chatapp?retryWrites=true&w=majority&appName=Cluster0";
+
+mongoose.connect(MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log("Connected to MongoDB Atlas successfully!");
+}).catch(err => {
+  console.error("MongoDB connection error:", err);
+});
+
+// Message Schema
+const messageSchema = new mongoose.Schema({
+  sender: String,
+  receiver: String,
+  message: String,
+  status: { type: String, default: 'sent' },
+  timestamp: { type: Date, default: Date.now }
+});
+
+const Message = mongoose.model('Message', messageSchema);
+
+// Real-time Storage calculation API
+app.get('/api/storage', async (req, res) => {
+  try {
+    const stats = await mongoose.connection.db.stats();
+    const storageUsedBytes = stats.dataSize || 0;
+    const storageUsedMB = (storageUsedBytes / (1024 * 1024)).toFixed(2);
+    const maxStorageMB = 512; // Free Tier Limit
+    res.json({ usedMB: storageUsedMB, maxMB: maxStorageMB });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch storage stats' });
   }
 });
 
-app.get('/', (req, res) => {
-  res.send('Server is running successfully!');
+// Clear All Chats API
+app.delete('/api/chats', async (req, res) => {
+  try {
+    await Message.deleteMany({});
+    res.json({ success: true, message: 'All chats cleared successfully!' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clear chats' });
+  }
 });
 
-// Connected users ki list: { socketId: username }
-let users = {};
+io.on('connection', async (socket) => {
+  console.log('A user connected:', socket.id);
 
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+  // Load previous messages from MongoDB
+  try {
+    const messages = await Message.find().sort({ timestamp: 1 });
+    socket.emit('load_history', messages);
+  } catch (err) {
+    console.error("Error loading history:", err);
+  }
 
-  // User login/join
-  socket.on('join_system', (username) => {
-    if (!username) return;
-    users[socket.id] = username;
-    // Sabhi ko updated users ki list bhejo
-    io.emit('update_users', users);
-  });
-
-  // 1-to-1 Private Message bhejna
-  socket.on('send_private_message', (data) => {
-    const { recipientSocketId, messageText, messageId } = data;
-    const senderUsername = users[socket.id];
-
-    if (recipientSocketId && users[recipientSocketId]) {
-      // Samne wale user ko message bhejo
-      io.to(recipientSocketId).emit('receive_private_message', {
-        senderSocketId: socket.id,
-        senderUsername: senderUsername,
-        messageText: messageText,
-        messageId: messageId,
-        status: 'Delivered' // jaise hi deliver hua
+  // Handle incoming message
+  socket.on('send_message', async (data) => {
+    try {
+      const newMessage = new Message({
+        sender: data.sender,
+        receiver: data.receiver || 'Everyone',
+        message: data.message,
+        status: 'delivered'
       });
-
-      // Sender ko update do ki message deliver ho gaya hai
-      socket.emit('message_status_update', {
-        messageId: messageId,
-        status: 'Delivered'
-      });
-    } else {
-      // Agar user offline hai ya internet band hai
-      socket.emit('message_status_update', {
-        messageId: messageId,
-        status: 'Not Delivered'
-      });
+      await newMessage.save();
+      io.emit('receive_message', newMessage);
+    } catch (err) {
+      console.error("Error saving message:", err);
     }
   });
 
-  // Jab user chat khol kar dekh le (Seen)
-  socket.on('mark_as_seen', (data) => {
-    const { senderSocketId, messageId } = data;
-    if (senderSocketId && users[senderSocketId]) {
-      io.to(senderSocketId).emit('message_status_update', {
-        messageId: messageId,
-        status: 'Seen'
-      });
-    }
-  });
-
-  // Disconnect hone par
   socket.on('disconnect', () => {
-    delete users[socket.id];
-    io.emit('update_users', users);
     console.log('User disconnected:', socket.id);
   });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
-      

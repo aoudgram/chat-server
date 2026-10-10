@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Verified Chat App</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -24,7 +24,6 @@
             
             <div id="contact-field-container">
                 <label class="text-xs font-semibold text-gray-600">Mobile Number / Email</label>
-                <!-- Placeholder cleaned completely for privacy -->
                 <input type="text" id="contact-input" placeholder="Enter your mobile or email" class="w-full border rounded-lg px-3 py-2 text-sm mt-1 focus:ring-2 focus:ring-blue-500 focus:outline-none">
             </div>
 
@@ -114,7 +113,10 @@
     </div>
 
     <script>
-        const socket = io();
+        // YAHAN APNE RENDER WALE BACKEND KA URL DAALNA HAI (jaise: https://your-backend.onrender.com)
+        const BACKEND_URL = "https://YOUR-RENDER-BACKEND-URL.onrender.com"; 
+
+        const socket = io(BACKEND_URL);
         let currentUser = localStorage.getItem('chat_username') || null;
         let currentUserContact = localStorage.getItem('chat_contact') || null;
         let activeChatUser = null;
@@ -171,7 +173,7 @@
                 }
 
                 try {
-                    const res = await fetch('/api/login', {
+                    const res = await fetch(`${BACKEND_URL}/api/login`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ identifier, password })
@@ -184,7 +186,7 @@
                         errorEl.classList.remove('hidden');
                     }
                 } catch (err) {
-                    errorEl.innerText = "Network error. Try again.";
+                    errorEl.innerText = "Network error. Check connection.";
                     errorEl.classList.remove('hidden');
                 }
             } else {
@@ -205,7 +207,7 @@
                 }
 
                 try {
-                    const res = await fetch('/api/register', {
+                    const res = await fetch(`${BACKEND_URL}/api/register`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ contactInfo, username, password })
@@ -218,7 +220,7 @@
                         errorEl.classList.remove('hidden');
                     }
                 } catch (err) {
-                    errorEl.innerText = "Network error. Try again.";
+                    errorEl.innerText = "Network error. Check connection.";
                     errorEl.classList.remove('hidden');
                 }
             }
@@ -271,7 +273,7 @@
 
         async function loadContacts() {
             try {
-                const res = await fetch('/api/users');
+                const res = await fetch(`${BACKEND_URL}/api/users`);
                 const users = await res.json();
                 const container = document.getElementById('contacts-list');
                 container.innerHTML = '';
@@ -363,8 +365,4 @@
         });
 
         function renderMessages(messages) {
-            const container = document.getElementById('chat-container');
-            container.innerHTML = '';
-            messages.forEach(msg => {
-                const decryptedContent = decryptText(msg.message);
-   
+            const 

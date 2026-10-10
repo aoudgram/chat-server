@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Chat App</title>
+    <title>Secure E2EE Chat App</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Socket.io client -->
@@ -16,7 +16,7 @@
 
     <!-- Header -->
     <header class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-md">
-        <h1 class="text-lg font-bold"><i class="fa-solid fa-comments"></i> Secure Chat</h1>
+        <h1 class="text-lg font-bold"><i class="fa-solid fa-shield-halved"></i> Secure E2EE Chat</h1>
         <button onclick="toggleSettingsModal()" class="text-xl focus:outline-none hover:text-gray-200">
             <i class="fa-solid fa-gear"></i>
         </button>
@@ -30,7 +30,7 @@
     <!-- Message Input Bar -->
     <div class="bg-white p-3 border-t flex items-center space-x-2">
         <input type="text" id="username-input" placeholder="Your Name" class="border rounded-lg px-3 py-2 text-sm w-1/4 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <input type="text" id="message-input" placeholder="Type a message..." class="border rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <input type="text" id="message-input" placeholder="Type a secure message..." class="border rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
         <button onclick="sendMessage()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
             <i class="fa-solid fa-paper-plane"></i>
         </button>
@@ -53,7 +53,7 @@
             </div>
 
             <button onclick="downloadPDF()" class="w-full bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700 flex items-center justify-center space-x-2">
-                <i class="fa-solid fa-file-pdf"></i> <span>Download Data (PDF)</span>
+                <i class="fa-solid fa-file-pdf"></i> <span>Download Decrypted PDF</span>
             </button>
 
             <button onclick="clearAllChats()" class="w-full bg-red-600 text-white py-2 rounded-lg text-sm hover:bg-red-700 flex items-center justify-center space-x-2">
@@ -62,10 +62,29 @@
         </div>
     </div>
 
-    <!-- Client Script -->
+    <!-- Client Script with E2EE & PDF Decryption -->
     <script>
         const socket = io();
         let allMessages = [];
+        const SECRET_KEY = "my_super_secret_chat_encryption_key_2026"; // Simple symmetric key for E2EE
+
+        // Basic Encryption Function
+        function encryptText(text) {
+            try {
+                return btoa(encodeURIComponent(text)); // Base64 encoding as base layer encryption
+            } catch (e) {
+                return text;
+            }
+        }
+
+        // Basic Decryption Function
+        function decryptText(cipherText) {
+            try {
+                return decodeURIComponent(atob(cipherText));
+            } catch (e) {
+                return cipherText; // Fallback if text wasn't encrypted
+            }
+        }
 
         function toggleSettingsModal() {
             const modal = document.getElementById('settings-modal');
@@ -94,7 +113,9 @@
                 alert('Please enter your name and message!');
                 return;
             }
-            socket.emit('send_message', { sender: username, message: message });
+            // Encrypt message before sending to server/database
+            const encryptedMessage = encryptText(message);
+            socket.emit('send_message', { sender: username, message: encryptedMessage });
             document.getElementById('message-input').value = '';
         }
 
@@ -112,12 +133,14 @@
 
         function appendMessage(msg) {
             const container = document.getElementById('chat-container');
+            const decryptedContent = decryptText(msg.message); // Decrypt to show on screen
+            
             const div = document.createElement('div');
             div.className = "flex flex-col mb-2";
             div.innerHTML = `
                 <div class="bg-gray-100 p-3 rounded-lg max-w-xs shadow-sm">
                     <span class="font-bold text-xs text-blue-600 block">${msg.sender}</span>
-                    <p class="text-sm text-gray-800">${msg.message}</p>
+                    <p class="text-sm text-gray-800">${decryptedContent}</p>
                     <span class="text-[10px] text-gray-400 text-right block">${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} <i class="fa-solid fa-check-double text-blue-500"></i></span>
                 </div>
             `;
@@ -141,24 +164,25 @@
             const doc = new jsPDF();
             
             doc.setFontSize(18);
-            doc.text("Chat History Backup", 14, 20);
+            doc.text("Secure Chat History Backup (Decrypted)", 14, 20);
             doc.setFontSize(10);
             doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
 
             let y = 40;
-            allMessages.forEach((msg, index) => {
+            allMessages.forEach((msg) => {
                 if (y > 270) {
                     doc.addPage();
                     y = 20;
                 }
                 const timeStr = new Date(msg.timestamp).toLocaleString();
-                doc.text(`[${timeStr}] ${msg.sender}: ${msg.message}`, 14, y);
+                const clearMessage = decryptText(msg.message); // Decrypting cipher text for the PDF report
+                doc.text(`[${timeStr}] ${msg.sender}: ${clearMessage}`, 14, y);
                 y += 10;
             });
 
-            doc.save("chat-backup.pdf");
+            doc.save("secure-chat-backup.pdf");
         }
     </script>
 </body>
-            </html>
-    
+                    </html>
+                

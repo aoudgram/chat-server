@@ -3,256 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Private Messenger</title>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; }
-        
-        /* Login Screen */
-        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #075e54; display: flex; justify-content: center; align-items: center; z-index: 100; }
-        .login-box { background: white; padding: 25px; border-radius: 8px; text-align: center; width: 85%; max-width: 320px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        .login-box input { width: 90%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; outline: none; }
-        .login-box button { background: #075e54; color: white; border: none; padding: 10px 20px; border-radius: 4px; font-size: 16px; cursor: pointer; width: 100%; font-weight: bold; }
-
-        /* Main Container */
-        #app-container { display: flex; flex-direction: column; height: 100vh; display: none; }
-        .header { background: #075e54; color: white; padding: 15px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        
-        /* Contacts List View */
-        #contacts-view { flex: 1; background: #fff; overflow-y: auto; padding: 10px; }
-        .contact-item { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 16px; font-weight: bold; color: #333; }
-        .contact-item:hover { background: #f9f9f9; }
-
-        /* Chat View */
-        #chat-view { flex: 1; display: flex; flex-direction: column; background: #efeae2; display: none; height: 100vh; }
-        .chat-header { background: #075e54; color: white; padding: 12px 15px; display: flex; align-items: center; gap: 15px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        #chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-        
-        .message-bubble { max-width: 75%; padding: 10px 12px; border-radius: 8px; font-size: 14px; word-break: break-word; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
-        .my-msg { background: #dcf8c6; align-self: flex-end; }
-        .other-msg { background: #ffffff; align-self: flex-start; }
-        .msg-status { font-size: 10px; color: gray; text-align: right; margin-top: 4px; font-weight: bold; }
-
-        /* Input Area */
-        .input-area { display: flex; padding: 10px; background: #f0f0f0; border-top: 1px solid #ddd; }
-        .input-area input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; outline: none; font-size: 15px; padding-left: 15px; }
-        .input-area button { background: #075e54; color: white; border: none; padding: 10px 20px; margin-left: 8px; border-radius: 20px; font-size: 15px; cursor: pointer; font-weight: bold; }
-    </style>
+    <title>Professional Chat App</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Socket.io client -->
+    <script src="/socket.io/socket.io.js"></script>
+    <!-- jsPDF library for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
+<body class="bg-gray-100 h-screen flex flex-col justify-between">
 
-    <!-- Login Screen -->
-    <div id="login-screen">
-        <div class="login-box">
-            <h2>Messenger Login</h2>
-            <input type="text" id="username-input" placeholder="Enter your name..." autofocus>
-            <button id="login-btn">Start Chatting</button>
-        </div>
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-md">
+        <h1 class="text-lg font-bold"><i class="fa-solid fa-comments"></i> Secure Chat</h1>
+        <button onclick="toggleSettingsModal()" class="text-xl focus:outline-none hover:text-gray-200">
+            <i class="fa-solid fa-gear"></i>
+        </button>
+    </header>
+
+    <!-- Chat Box -->
+    <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
+        <!-- Messages will appear here -->
     </div>
 
-    <!-- App Container -->
-    <div id="app-container">
-        <!-- Contacts Screen -->
-        <div id="contacts-screen" style="display: flex; flex-direction: column; height: 100vh;">
-            <div class="header">
-                <span>Chats</span>
-                <span id="current-user-display" style="font-size: 13px; font-weight: normal;"></span>
-            </div>
-            <div id="contacts-view">
-                <p style="text-align: center; color: gray; margin-top: 20px;">Waiting for other friends to join...</p>
-            </div>
-        </div>
-
-        <!-- Chat View -->
-        <div id="chat-view">
-            <div class="chat-header" id="back-to-contacts">
-                <span>← <span id="chat-with-name"></span></span>
-            </div>
-            <div id="chat-messages"></div>
-            <div class="input-area">
-                <input type="text" id="msg-input" placeholder="Type a message..." autocomplete="off">
-                <button id="send-msg-btn">Send</button>
-            </div>
-        </div>
+    <!-- Message Input Bar -->
+    <div class="bg-white p-3 border-t flex items-center space-x-2">
+        <input type="text" id="username-input" placeholder="Your Name" class="border rounded-lg px-3 py-2 text-sm w-1/4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <input type="text" id="message-input" placeholder="Type a message..." class="border rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button onclick="sendMessage()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
+            <i class="fa-solid fa-paper-plane"></i>
+        </button>
     </div>
 
-    <script>
-        const SOCKET_URL = "https://chat-server-0jul.onrender.com";
-        const socket = io(SOCKET_URL);
-
-        const loginScreen = document.getElementById('login-screen');
-        const appContainer = document.getElementById('app-container');
-        const usernameInput = document.getElementById('username-input');
-        const loginBtn = document.getElementById('login-btn');
-        const currentUserDisplay = document.getElementById('current-user-display');
-        
-        const contactsScreen = document.getElementById('contacts-screen');
-        const contactsView = document.getElementById('contacts-view');
-        
-        const chatView = document.getElementById('chat-view');
-        const chatWithName = document.getElementById('chat-with-name');
-        const chatMessages = document.getElementById('chat-messages');
-        const msgInput = document.getElementById('msg-input');
-        const sendMsgBtn = document.getElementById('send-msg-btn');
-        const backBtn = document.getElementById('back-to-contacts');
-
-        let myUsername = "";
-        let activeRecipientSocketId = null;
-        let messagesStore = {}; // { socketId: [ {id, text, sender, status} ] }
-        let onlineUsersData = {};
-
-        // Login Action
-        loginBtn.addEventListener('click', () => {
-            const name = usernameInput.value.trim();
-            if (name !== "") {
-                myUsername = name;
-                socket.emit('join_system', myUsername);
-                loginScreen.style.display = 'none';
-                appContainer.style.display = 'flex';
-                currentUserDisplay.textContent = `Logged in as: ${myUsername}`;
-            }
-        });
-
-        // Update Contacts List
-        socket.optionList = socket.on('update_users', (users) => {
-            onlineUsersData = users;
-            contactsView.innerHTML = '';
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center">
+        <div class="bg-white p-6 rounded-lg w-80 shadow-xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h2 class="font-bold text-gray-800"><i class="fa-solid fa-gear"></i> App Settings</h2>
+                <button onclick="toggleSettingsModal()" class="text-gray-500 hover:text-gray-800"><i class="fa-solid fa-xmark"></i></button>
+            </div>
             
-            const ids = Object.keys(users);
-            if (ids.length <= 1) {
-                contactsView.innerHTML = '<p style="text-align: center; color: gray; margin-top: 20px;">No other friends online yet. Share the link!</p>';
+            <div>
+                <p class="text-sm text-gray-600 mb-1">Cloud Storage Usage:</p>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="storage-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+                <p id="storage-text" class="text-xs text-gray-500 mt-1">Loading storage...</p>
+            </div>
+
+            <button onclick="downloadPDF()" class="w-full bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700 flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-file-pdf"></i> <span>Download Data (PDF)</span>
+            </button>
+
+            <button onclick="clearAllChats()" class="w-full bg-red-600 text-white py-2 rounded-lg text-sm hover:bg-red-700 flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-trash"></i> <span>Clear All Chats</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Client Script -->
+    <script>
+        const socket = io();
+        let allMessages = [];
+
+        function toggleSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) {
+                fetchStorageStats();
+            }
+        }
+
+        async function fetchStorageStats() {
+            try {
+                const res = await fetch('/api/storage');
+                const data = await res.json();
+                const percentage = (data.usedMB / data.maxMB) * 100;
+                document.getElementById('storage-bar').style.width = `${Math.min(percentage, 100)}%`;
+                document.getElementById('storage-text').innerText = `${data.usedMB} MB used of ${data.maxMB} MB (Free Tier)`;
+            } catch (err) {
+                document.getElementById('storage-text').innerText = 'Failed to load storage stats';
+            }
+        }
+
+        function sendMessage() {
+            const username = document.getElementById('username-input').value.trim();
+            const message = document.getElementById('message-input').value.trim();
+            if (!username || !message) {
+                alert('Please enter your name and message!');
                 return;
             }
+            socket.emit('send_message', { sender: username, message: message });
+            document.getElementById('message-input').value = '';
+        }
 
-            ids.forEach(id => {
-                if (id !== socket.id) {
-                    const div = document.createElement('div');
-                    div.classList.add('contact-item');
-                    div.innerHTML = `<span>${users[id]}</span> <span style="font-size: 12px; color: green;">Online</span>`;
-                    div.addEventListener('click', () => {
-                        openChat(id, users[id]);
-                    });
-                    contactsView.appendChild(div);
-                }
-            });
+        socket.on('load_history', (messages) => {
+            allMessages = messages;
+            const container = document.getElementById('chat-container');
+            container.innerHTML = '';
+            messages.forEach(msg => appendMessage(msg));
         });
 
-        function openChat(recipientId, recipientName) {
-            activeRecipientSocketId = recipientId;
-            chatWithName.textContent = recipientName;
-            contactsScreen.style.display = 'none';
-            chatView.style.display = 'flex';
-            renderMessages();
+        socket.on('receive_message', (msg) => {
+            allMessages.push(msg);
+            appendMessage(msg);
+        });
 
-            // Mark unread messages as Seen if opening chat
-            if (messagesStore[recipientId]) {
-                messagesStore[recipientId].forEach(msg => {
-                    if (msg.sender !== myUsername && msg.status !== 'Seen') {
-                        msg.status = 'Seen';
-                        socket.emit('mark_as_seen', { senderSocketId: recipientId, messageId: msg.id });
-                    }
-                });
+        function appendMessage(msg) {
+            const container = document.getElementById('chat-container');
+            const div = document.createElement('div');
+            div.className = "flex flex-col mb-2";
+            div.innerHTML = `
+                <div class="bg-gray-100 p-3 rounded-lg max-w-xs shadow-sm">
+                    <span class="font-bold text-xs text-blue-600 block">${msg.sender}</span>
+                    <p class="text-sm text-gray-800">${msg.message}</p>
+                    <span class="text-[10px] text-gray-400 text-right block">${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} <i class="fa-solid fa-check-double text-blue-500"></i></span>
+                </div>
+            `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function clearAllChats() {
+            if (confirm('Are you sure you want to clear all chats from the cloud?')) {
+                const res = await fetch('/api/chats', { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    alert('Chats cleared successfully!');
+                    location.reload();
+                }
             }
         }
 
-        backBtn.addEventListener('click', () => {
-            chatView.style.display = 'none';
-            contactsScreen.style.display = 'flex';
-            activeRecipientSocketId = null;
-        });
-
-        // Send Message
-        function sendTextMessage() {
-            const text = msgInput.value.trim();
-            if (text !== "" && activeRecipientSocketId) {
-                const messageId = 'msg_' + Date.now() + Math.random();
-                const msgObj = {
-                    id: messageId,
-                    text: text,
-                    sender: myUsername,
-                    status: 'Not Delivered' // Default starting state
-                };
-
-                if (!messagesStore[activeRecipientSocketId]) {
-                    messagesStore[activeRecipientSocketId] = [];
-                }
-                messagesStore[activeRecipientSocketId].push(msgObj);
-                renderMessages();
-                msgInput.value = "";
-
-                // Emit to server
-                socket.emit('send_private_message', {
-                    recipientSocketId: activeRecipientSocketId,
-                    messageText: text,
-                    messageId: messageId
-                });
-            }
-        }
-
-        sendMsgBtn.addEventListener('click', sendTextMessage);
-        msgInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendTextMessage();
-        });
-
-        // Receive Private Message
-        socket.on('receive_private_message', (data) => {
-            const { senderSocketId, senderUsername, messageText, messageId } = data;
-
-            if (!messagesStore[senderSocketId]) {
-                messagesStore[senderSocketId] = [];
-            }
-
-            messagesStore[senderSocketId].push({
-                id: messageId,
-                text: messageText,
-                sender: senderUsername,
-                status: 'Delivered'
-            });
-
-            // Agar hum usi user ki chat window mein hain, toh turant 'Seen' mark kar do
-            if (activeRecipientSocketId === senderSocketId) {
-                renderMessages();
-                socket.emit('mark_as_seen', { senderSocketId: senderSocketId, messageId: messageId });
-            }
-        });
-
-        // Message Status Updates (Delivered / Seen / Not Delivered)
-        socket.on('message_status_update', (data) => {
-            const { messageId, status } = data;
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
             
-            // Search across all chats to update status
-            for (let recipientId in messagesStore) {
-                let found = messagesStore[recipientId].find(m => m.id === messageId);
-                if (found) {
-                    found.status = status;
-                    if (activeRecipientSocketId === recipientId) {
-                        renderMessages();
-                    }
-                    break;
-                }
-            }
-        });
+            doc.setFontSize(18);
+            doc.text("Chat History Backup", 14, 20);
+            doc.setFontSize(10);
+            doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
 
-        function renderMessages() {
-            chatMessages.innerHTML = '';
-            if (!activeRecipientSocketId || !messagesStore[activeRecipientSocketId]) return;
-
-            messagesStore[activeRecipientSocketId].forEach(msg => {
-                const bubble = document.createElement('div');
-                bubble.classList.add('message-bubble');
-                
-                if (msg.sender === myUsername) {
-                    bubble.classList.add('my-msg');
-                    bubble.innerHTML = `<div>${msg.text}</div><div class="msg-status">${msg.status}</div>`;
-                } else {
-                    bubble.classList.add('other-msg');
-                    bubble.innerHTML = `<div>${msg.text}</div>`;
+            let y = 40;
+            allMessages.forEach((msg, index) => {
+                if (y > 270) {
+                    doc.addPage();
+                    y = 20;
                 }
-                chatMessages.appendChild(bubble);
+                const timeStr = new Date(msg.timestamp).toLocaleString();
+                doc.text(`[${timeStr}] ${msg.sender}: ${msg.message}`, 14, y);
+                y += 10;
             });
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            doc.save("chat-backup.pdf");
         }
     </script>
 </body>
-                </html>
-            
+            </html>
+    

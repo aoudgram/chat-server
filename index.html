@@ -113,8 +113,8 @@
     </div>
 
     <script>
-        // YAHAN APNE RENDER WALE BACKEND KA URL DAALNA HAI (jaise: https://your-backend.onrender.com)
-        const BACKEND_URL = "https://YOUR-RENDER-BACKEND-URL.onrender.com"; 
+        // Render backend URL set successfully
+        const BACKEND_URL = "https://chat-server-0jul.onrender.com";
 
         const socket = io(BACKEND_URL);
         let currentUser = localStorage.getItem('chat_username') || null;
@@ -365,4 +365,5 @@
         });
 
         function renderMessages(messages) {
-            const 
+            const container = document.getElementById('chat-container');
+         

@@ -34,15 +34,15 @@ const User = mongoose.model('User', userSchema);
 const messageSchema = new mongoose.Schema({
   sender: String,
   receiver: String,
-  message: String, // Encrypted text
+  message: String,
   timestamp: { type: Date, default: Date.now }
 });
 const Message = mongoose.model('Message', messageSchema);
 
-// Reserved Usernames list
+// Reserved Usernames list (Only VIKAS is protected, others are free)
 const RESERVED_USERNAMES = ["VIKAS", "VANVAAR", "KEEBUL", "AOUDGRAM", "AOUD", "KNOCKJOCK"];
 
-// Register User API
+// Register or Login User API
 app.post('/api/register', async (req, res) => {
   try {
     let { contactInfo, username } = req.body;
@@ -55,17 +55,20 @@ app.post('/api/register', async (req, res) => {
 
     const upperUsername = username.toUpperCase();
 
-    // Check reserved usernames (except if it's the first vikas registration)
+    // Check reserved usernames (except if it's VIKAS)
     if (RESERVED_USERNAMES.includes(upperUsername) && upperUsername !== "VIKAS") {
       return res.status(400).json({ success: false, error: 'This username is reserved and not available' });
     }
 
-    // Check if username already exists
-    const existingUser = await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
+    // Check if user already exists
+    let existingUser = await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
+    
     if (existingUser) {
-      return res.status(400).json({ success: false, error: 'Username already taken! Please choose another.' });
+      // If user already exists, just allow them to login successfully!
+      return res.json({ success: true, user: existingUser });
     }
 
+    // Create new user if not exists
     const newUser = new User({ contactInfo, username });
     await newUser.save();
     res.json({ success: true, user: newUser });

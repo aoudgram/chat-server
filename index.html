@@ -3,47 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure E2EE Chat App</title>
-    <!-- Tailwind CSS for styling -->
+    <title>Secure Verified Chat App</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Socket.io client -->
     <script src="/socket.io/socket.io.js"></script>
-    <!-- jsPDF library for PDF Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gray-100 h-screen flex flex-col justify-between">
+<body class="bg-gray-100 h-screen flex flex-col">
 
-    <!-- Header -->
-    <header class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-md">
-        <h1 class="text-lg font-bold"><i class="fa-solid fa-shield-halved"></i> Secure E2EE Chat</h1>
-        <button onclick="toggleSettingsModal()" class="text-xl focus:outline-none hover:text-gray-200">
-            <i class="fa-solid fa-gear"></i>
-        </button>
-    </header>
-
-    <!-- Chat Box -->
-    <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
-        <!-- Messages will appear here -->
+    <!-- Auth Section (Login/Signup) -->
+    <div id="auth-screen" class="fixed inset-0 bg-white z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm space-y-4 border">
+            <div class="text-center">
+                <h2 class="text-2xl font-bold text-blue-600"><i class="fa-solid fa-shield-halved"></i> Secure Chat</h2>
+                <p class="text-xs text-gray-500 mt-1">Sign in with Email/Phone & Choose Username</p>
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-gray-600">Email or Mobile Number</label>
+                <input type="text" id="contact-input" placeholder="Enter email or mobile" class="w-full border rounded-lg px-3 py-2 text-sm mt-1 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-gray-600">Username (Min 4 letters)</label>
+                <input type="text" id="reg-username-input" placeholder="e.g. VIKAS or @VIJAY" class="w-full border rounded-lg px-3 py-2 text-sm mt-1 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <p id="username-error" class="text-xs text-red-500 mt-1 hidden"></p>
+            </div>
+            <button onclick="registerUser()" class="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-blue-700">Continue & Enter App</button>
+        </div>
     </div>
 
-    <!-- Message Input Bar -->
-    <div class="bg-white p-3 border-t flex items-center space-x-2">
-        <input type="text" id="username-input" placeholder="Your Name" class="border rounded-lg px-3 py-2 text-sm w-1/4 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <input type="text" id="message-input" placeholder="Type a secure message..." class="border rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <button onclick="sendMessage()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
-            <i class="fa-solid fa-paper-plane"></i>
-        </button>
+    <!-- Main App Container -->
+    <div id="main-app" class="flex-1 flex flex-col hidden h-screen">
+        <!-- Header -->
+        <header class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-md">
+            <div class="flex items-center space-x-2">
+                <h1 id="current-user-display" class="text-base font-bold"></h1>
+                <i class="fa-solid fa-circle-check text-blue-300 text-sm" title="Verified"></i>
+            </div>
+            <button onclick="toggleSettingsModal()" class="text-xl focus:outline-none hover:text-gray-200">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+        </header>
+
+        <!-- Body Layout (Contacts + Chat) -->
+        <div class="flex-1 flex overflow-hidden">
+            <!-- Contact Sidebar -->
+            <div class="w-1/3 bg-white border-r flex flex-col">
+                <div class="p-3 bg-gray-50 border-b font-bold text-xs text-gray-600">DIRECT CONTACTS</div>
+                <div id="contacts-list" class="flex-1 overflow-y-auto divide-y">
+                    <!-- Dynamic Contacts -->
+                </div>
+            </div>
+
+            <!-- Chat Window -->
+            <div class="w-2/3 flex flex-col bg-gray-50">
+                <div id="chat-header" class="p-3 bg-white border-b font-bold text-sm text-gray-800 flex items-center space-x-1">
+                    <span>Select a contact to start chatting</span>
+                </div>
+                <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-3">
+                    <!-- Messages -->
+                </div>
+                <!-- Input Box -->
+                <div id="chat-input-bar" class="bg-white p-3 border-t flex items-center space-x-2 hidden">
+                    <input type="text" id="message-input" placeholder="Type a secure message..." class="border rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="sendMessage()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Settings Modal -->
-    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center">
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center z-50">
         <div class="bg-white p-6 rounded-lg w-80 shadow-xl space-y-4">
             <div class="flex justify-between items-center border-b pb-2">
                 <h2 class="font-bold text-gray-800"><i class="fa-solid fa-gear"></i> App Settings</h2>
                 <button onclick="toggleSettingsModal()" class="text-gray-500 hover:text-gray-800"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            
             <div>
                 <p class="text-sm text-gray-600 mb-1">Cloud Storage Usage:</p>
                 <div class="w-full bg-gray-200 rounded-full h-2.5">
@@ -51,39 +87,156 @@
                 </div>
                 <p id="storage-text" class="text-xs text-gray-500 mt-1">Loading storage...</p>
             </div>
-
             <button onclick="downloadPDF()" class="w-full bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700 flex items-center justify-center space-x-2">
                 <i class="fa-solid fa-file-pdf"></i> <span>Download Decrypted PDF</span>
             </button>
-
             <button onclick="clearAllChats()" class="w-full bg-red-600 text-white py-2 rounded-lg text-sm hover:bg-red-700 flex items-center justify-center space-x-2">
                 <i class="fa-solid fa-trash"></i> <span>Clear All Chats</span>
             </button>
         </div>
     </div>
 
-    <!-- Client Script with E2EE & PDF Decryption -->
+    <!-- Client Script -->
     <script>
         const socket = io();
+        let currentUser = localStorage.getItem('chat_username') || null;
+        let activeChatUser = null;
         let allMessages = [];
-        const SECRET_KEY = "my_super_secret_chat_encryption_key_2026"; // Simple symmetric key for E2EE
 
-        // Basic Encryption Function
-        function encryptText(text) {
+        // Check if already logged in
+        window.onload = () => {
+            if (currentUser) {
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+                document.getElementById('current-user-display').innerHTML = `@${currentUser} <i class="fa-solid fa-circle-check text-blue-300"></i>`;
+                loadContacts();
+            }
+        };
+
+        async function registerUser() {
+            const contactInfo = document.getElementById('contact-input').value.trim();
+            let username = document.getElementById('reg-username-input').value.trim().replace('@', '');
+            const errorEl = document.getElementById('username-error');
+
+            if (!contactInfo || !username) {
+                errorEl.innerText = "Please fill all fields!";
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            if (username.length < 4) {
+                errorEl.innerText = "Please enter at least 4 letters username";
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
             try {
-                return btoa(encodeURIComponent(text)); // Base64 encoding as base layer encryption
-            } catch (e) {
-                return text;
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contactInfo, username })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    currentUser = data.user.username;
+                    localStorage.setItem('chat_username', currentUser);
+                    document.getElementById('auth-screen').classList.add('hidden');
+                    document.getElementById('main-app').classList.remove('hidden');
+                    document.getElementById('current-user-display').innerHTML = `@${currentUser} <i class="fa-solid fa-circle-check text-blue-300"></i>`;
+                    loadContacts();
+                } else {
+                    errorEl.innerText = data.error;
+                    errorEl.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorEl.innerText = "Registration failed. Try again.";
+                errorEl.classList.remove('hidden');
             }
         }
 
-        // Basic Decryption Function
-        function decryptText(cipherText) {
+        async function loadContacts() {
             try {
-                return decodeURIComponent(atob(cipherText));
-            } catch (e) {
-                return cipherText; // Fallback if text wasn't encrypted
+                const res = await fetch('/api/users');
+                const users = await res.json();
+                const container = document.getElementById('contacts-list');
+                container.innerHTML = '';
+
+                users.forEach(user => {
+                    if (user.username === currentUser) return; // Don't show self in contacts
+                    const div = document.createElement('div');
+                    div.className = "p-3 hover:bg-gray-100 cursor-pointer flex items-center justify-between";
+                    div.innerHTML = `
+                        <span class="font-bold text-sm text-gray-800">@${user.username} <i class="fa-solid fa-circle-check text-blue-500 text-xs"></i></span>
+                        <i class="fa-solid fa-chevron-right text-xs text-gray-400"></i>
+                    `;
+                    div.onclick = () => selectContact(user.username);
+                    container.appendChild(div);
+                });
+            } catch (err) {
+                console.error("Failed to load contacts");
             }
+        }
+
+        function selectContact(username) {
+            activeChatUser = username;
+            document.getElementById('chat-header').innerHTML = `Chatting with: <span class="text-blue-600 font-bold">@${username}</span> <i class="fa-solid fa-circle-check text-blue-500 text-xs"></i>`;
+            document.getElementById('chat-input-bar').classList.remove('hidden');
+            socket.emit('get_history', { user1: currentUser, user2: activeChatUser });
+        }
+
+        function encryptText(text) {
+            try { return btoa(encodeURIComponent(text)); } catch (e) { return text; }
+        }
+
+        function decryptText(cipherText) {
+            try { return decodeURIComponent(atob(cipherText)); } catch (e) { return cipherText; }
+        }
+
+        function sendMessage() {
+            const message = document.getElementById('message-input').value.trim();
+            if (!message || !activeChatUser) return;
+
+            const encryptedMessage = encryptText(message);
+            socket.emit('send_message', {
+                sender: currentUser,
+                receiver: activeChatUser,
+                message: encryptedMessage
+            });
+            document.getElementById('message-input').value = '';
+        }
+
+        socket.on('load_history', (messages) => {
+            allMessages = messages;
+            renderMessages(messages);
+        });
+
+        socket.on('receive_message', (msg) => {
+            if ((msg.sender === currentUser && msg.receiver === activeChatUser) ||
+                (msg.sender === activeChatUser && msg.receiver === currentUser)) {
+                allMessages.push(msg);
+                renderMessages(allMessages);
+            }
+        });
+
+        function renderMessages(messages) {
+            const container = document.getElementById('chat-container');
+            container.innerHTML = '';
+            messages.forEach(msg => {
+                const decryptedContent = decryptText(msg.message);
+                const isMe = msg.sender === currentUser;
+                const div = document.createElement('div');
+                div.className = `flex flex-col mb-2 ${isMe ? 'items-end' : 'items-start'} `;
+                div.innerHTML = `
+                    <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'} p-3 rounded-lg max-w-xs shadow-sm">
+                        <span class="font-bold text-[10px] ${isMe ? 'text-blue-200' : 'text-blue-600'} block">@${msg.sender} <i class="fa-solid fa-circle-check text-[10px]"></i></span>
+                        <p class="text-sm">${decryptedContent}</p>
+                        <span class="text-[9px] ${isMe ? 'text-blue-200' : 'text-gray-400'} text-right block mt-1">${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
         }
 
         function toggleSettingsModal() {
@@ -106,48 +259,6 @@
             }
         }
 
-        function sendMessage() {
-            const username = document.getElementById('username-input').value.trim();
-            const message = document.getElementById('message-input').value.trim();
-            if (!username || !message) {
-                alert('Please enter your name and message!');
-                return;
-            }
-            // Encrypt message before sending to server/database
-            const encryptedMessage = encryptText(message);
-            socket.emit('send_message', { sender: username, message: encryptedMessage });
-            document.getElementById('message-input').value = '';
-        }
-
-        socket.on('load_history', (messages) => {
-            allMessages = messages;
-            const container = document.getElementById('chat-container');
-            container.innerHTML = '';
-            messages.forEach(msg => appendMessage(msg));
-        });
-
-        socket.on('receive_message', (msg) => {
-            allMessages.push(msg);
-            appendMessage(msg);
-        });
-
-        function appendMessage(msg) {
-            const container = document.getElementById('chat-container');
-            const decryptedContent = decryptText(msg.message); // Decrypt to show on screen
-            
-            const div = document.createElement('div');
-            div.className = "flex flex-col mb-2";
-            div.innerHTML = `
-                <div class="bg-gray-100 p-3 rounded-lg max-w-xs shadow-sm">
-                    <span class="font-bold text-xs text-blue-600 block">${msg.sender}</span>
-                    <p class="text-sm text-gray-800">${decryptedContent}</p>
-                    <span class="text-[10px] text-gray-400 text-right block">${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} <i class="fa-solid fa-check-double text-blue-500"></i></span>
-                </div>
-            `;
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-        }
-
         async function clearAllChats() {
             if (confirm('Are you sure you want to clear all chats from the cloud?')) {
                 const res = await fetch('/api/chats', { method: 'DELETE' });
@@ -162,7 +273,6 @@
         function downloadPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            
             doc.setFontSize(18);
             doc.text("Secure Chat History Backup (Decrypted)", 14, 20);
             doc.setFontSize(10);
@@ -175,14 +285,13 @@
                     y = 20;
                 }
                 const timeStr = new Date(msg.timestamp).toLocaleString();
-                const clearMessage = decryptText(msg.message); // Decrypting cipher text for the PDF report
-                doc.text(`[${timeStr}] ${msg.sender}: ${clearMessage}`, 14, y);
+                const clearMessage = decryptText(msg.message);
+                doc.text(`[${timeStr}] @${msg.sender} -> @${msg.receiver}: ${clearMessage}`, 14, y);
                 y += 10;
             });
-
             doc.save("secure-chat-backup.pdf");
         }
     </script>
 </body>
-                    </html>
-                
+                                                                                               </html>
+            

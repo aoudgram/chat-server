@@ -22,24 +22,75 @@ mongoose.connect(MONGO_URI, {
   console.error("MongoDB connection error:", err);
 });
 
-// Message Schema (Stores encrypted messages for E2EE security)
+// User Schema
+const userSchema = new mongoose.Schema({
+  contactInfo: String, // Email or Mobile
+  username: { type: String, unique: true },
+  createdAt: { type: Date, default: Date.now }
+});
+const User = mongoose.model('User', userSchema);
+
+// Message Schema
 const messageSchema = new mongoose.Schema({
   sender: String,
   receiver: String,
   message: String, // Encrypted text
-  status: { type: String, default: 'delivered' },
   timestamp: { type: Date, default: Date.now }
 });
-
 const Message = mongoose.model('Message', messageSchema);
 
-// Real-time Storage calculation API
+// Reserved Usernames list
+const RESERVED_USERNAMES = ["VIKAS", "VANVAAR", "KEEBUL", "AOUDGRAM", "AOUD", "KNOCKJOCK"];
+
+// Register User API
+app.post('/api/register', async (req, res) => {
+  try {
+    let { contactInfo, username } = req.body;
+    username = username.trim();
+
+    // Check 4 letters minimum restriction
+    if (username.length < 4) {
+      return res.status(400).json({ success: false, error: 'Please enter at least 4 letters username' });
+    }
+
+    const upperUsername = username.toUpperCase();
+
+    // Check reserved usernames (except if it's the first vikas registration)
+    if (RESERVED_USERNAMES.includes(upperUsername) && upperUsername !== "VIKAS") {
+      return res.status(400).json({ success: false, error: 'This username is reserved and not available' });
+    }
+
+    // Check if username already exists
+    const existingUser = await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
+    if (existingUser) {
+      return res.status(400).json({ success: false, error: 'Username already taken! Please choose another.' });
+    }
+
+    const newUser = new User({ contactInfo, username });
+    await newUser.save();
+    res.json({ success: true, user: newUser });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error during registration' });
+  }
+});
+
+// Get all users for contact list
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await User.find({}, 'username createdAt');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// Storage Stats API
 app.get('/api/storage', async (req, res) => {
   try {
     const stats = await mongoose.connection.db.stats();
     const storageUsedBytes = stats.dataSize || 0;
     const storageUsedMB = (storageUsedBytes / (1024 * 1024)).toFixed(2);
-    const maxStorageMB = 512; // Free Tier Limit
+    const maxStorageMB = 512;
     res.json({ usedMB: storageUsedMB, maxMB: maxStorageMB });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch storage stats' });
@@ -56,25 +107,31 @@ app.delete('/api/chats', async (req, res) => {
   }
 });
 
-io.on('connection', async (socket) => {
+io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
-  // Load previous messages from MongoDB
-  try {
-    const messages = await Message.find().sort({ timestamp: 1 });
-    socket.emit('load_history', messages);
-  } catch (err) {
-    console.error("Error loading history:", err);
-  }
+  // Load chat history between two users
+  socket.on('get_history', async ({ user1, user2 }) => {
+    try {
+      const messages = await Message.find({
+        $or: [
+          { sender: user1, receiver: user2 },
+          { sender: user2, receiver: user1 }
+        ]
+      }).sort({ timestamp: 1 });
+      socket.emit('load_history', messages);
+    } catch (err) {
+      console.error("Error loading history:", err);
+    }
+  });
 
-  // Handle incoming encrypted message
+  // Handle incoming message
   socket.on('send_message', async (data) => {
     try {
       const newMessage = new Message({
         sender: data.sender,
-        receiver: data.receiver || 'Everyone',
-        message: data.message, // Saves encrypted string
-        status: 'delivered'
+        receiver: data.receiver,
+        message: data.message
       });
       await newMessage.save();
       io.emit('receive_message', newMessage);

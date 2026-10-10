@@ -10,7 +10,7 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static('public'));
 
-// MongoDB Atlas Connection (Password already added)
+// MongoDB Atlas Connection
 const MONGO_URI = "mongodb+srv://vikasnetad_db_user:sc4beq2BognWPmzE@cluster0.nnjescm.mongodb.net/chatapp?retryWrites=true&w=majority&appName=Cluster0";
 
 mongoose.connect(MONGO_URI, {
@@ -22,12 +22,12 @@ mongoose.connect(MONGO_URI, {
   console.error("MongoDB connection error:", err);
 });
 
-// Message Schema
+// Message Schema (Stores encrypted messages for E2EE security)
 const messageSchema = new mongoose.Schema({
   sender: String,
   receiver: String,
-  message: String,
-  status: { type: String, default: 'sent' },
+  message: String, // Encrypted text
+  status: { type: String, default: 'delivered' },
   timestamp: { type: Date, default: Date.now }
 });
 
@@ -67,13 +67,13 @@ io.on('connection', async (socket) => {
     console.error("Error loading history:", err);
   }
 
-  // Handle incoming message
+  // Handle incoming encrypted message
   socket.on('send_message', async (data) => {
     try {
       const newMessage = new Message({
         sender: data.sender,
         receiver: data.receiver || 'Everyone',
-        message: data.message,
+        message: data.message, // Saves encrypted string
         status: 'delivered'
       });
       await newMessage.save();
@@ -92,3 +92,4 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+  
